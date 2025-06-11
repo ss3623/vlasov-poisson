@@ -14,11 +14,13 @@ u = Function(W)
 q = Function(V).interpolate(exp(-(x-0.5)**2/(0.2**2/2)))
 q_init = Function(V).assign(q)
 
+#---time stepping parameters---
 T = 3
 dt = T/500
 dtc = Constant(dt)
 q_in = Constant(1.0)
-m = Constant(1.0)
+mass = Constant(1.0)
+#--- The q solver  ------------
 
 dq_trial = TrialFunction(V)
 psi = TestFunction(V)
@@ -68,7 +70,7 @@ du_trial = TrialFunction(W)
 u_test = TestFunction(W)
 a = inner(u_test, du_trial)*dx
 
-L1 = -dtc/m*inner(u_test, grad(phi))*dx
+L1 = -dtc/mass*inner(u_test, grad(phi))*dx
 du = Function(W) #constructor for a class object
 u1 = Function(W)
 u2 = Function(W)
@@ -78,7 +80,6 @@ du_solv = LinearVariationalSolver(du_prob)
 t = 0.0
 step = 0
 output_freq = 20
-
 outfile = VTKFile("advection.pvd")
 outfile.write(q, phi, u)
 
