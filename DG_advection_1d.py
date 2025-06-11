@@ -21,15 +21,15 @@ q_in = Constant(1.0)
 m = Constant(1.0)
 
 dq_trial = TrialFunction(V)
-phi = TestFunction(V)
-a = phi*dq_trial*dx
+psi = TestFunction(V)
+a = psi*dq_trial*dx
 
 us = Function(W)
 n = FacetNormal(mesh)
 un = 0.5*(dot(us, n) + abs(dot(us, n)))
 
-L1 = dtc*(inner(us, grad(phi))*q*dx
-          - (phi('+') - phi('-'))*(un('+')*q('+') - un('-')*q('-'))*dS)
+L1 = dtc*(inner(us, grad(psi))*q*dx
+          - (psi('+') - psi('-'))*(un('+')*q('+') - un('-')*q('-'))*dS)
 
 q1 = Function(V); q2 = Function(V)
 L2 = replace(L1, {q: q1}); L3 = replace(L1, {q: q2})
