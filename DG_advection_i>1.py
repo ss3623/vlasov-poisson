@@ -24,19 +24,25 @@ q_list = []
 for i in range(m):
     q = Function(V)
     q_list.append(q)
+q = Function(V) #input to solver
 
 for i, q in enumerate(q_list):
     # Example: Shift center for each stream
     q.interpolate(exp(-((x-0.5-0.1*i)**2)/(0.2**2/2)))
+q1_list = [Function(V) for _ in range(m)]
+q2_list = [Function(V) for _ in range(m)]
 
 u_list = []
 for i in range(m):
     u = Function(W)
     u_list.append(u)
-
+u = Function(W) #input to solver
 for i, u in enumerate(u_list):
     # Example: Change frequency for each stream
-    u.interpolate(0.5*(1 + sin(2*math.pi*(i+1)*x)))
+    u.interpolate(as_vector([0.5*(1 + sin(2*pi*(i+1)*x))]))
+u1_list = [Function(W) for _ in range(m)]
+u2_list = [Function(W) for _ in range(m)]
+
 
 dq_trial = TrialFunction(V)
 psi = TestFunction(V)
@@ -49,20 +55,34 @@ L1 = dtc*(inner(us, grad(psi))*q*dx
 q1 = Function(V); q2 = Function(V)
 L2 = replace(L1, {q: q1}); L3 = replace(L1, {q: q2})
 
-q_total = Function(V)
-q_total.assign(0)
-for q in q_list:
-    q_total += q  
-dq_list = []
-for i in range(m):
-    dq = Function(V)
-    dq_list.append(dq)
+# Placeholder for the total change in q
+for i,q in enumerate(q_list):
+    if i == 0:
+        q_total = q
+    else:
+        q_total += q  
+for i,q in enumerate(q1_list):
+    if i == 0:
+        q1_total = q
+    else:
+        q1_total += q  
+for i,q in enumerate(q2_list):
+    if i == 0:
+        q2_total = q
+    else:
+        q2_total += q  
+ 
+dq = Function(V)  # Placeholder for the total change in q
+
 
 # create the solvers
 params = {'ksp_type': 'preonly', 'pc_type': 'bjacobi', 'sub_pc_type': 'ilu'}
-
-
-#DO STUFF FOR Q!!! and dq!!!!
+prob1 = LinearVariationalProblem(a, L1, dq)
+solv1 = LinearVariationalSolver(prob1, solver_parameters=params)
+prob2 = LinearVariationalProblem(a, L2, dq)
+solv2 = LinearVariationalSolver(prob2, solver_parameters=params)
+prob3 = LinearVariationalProblem(a, L3, dq)
+solv3 = LinearVariationalSolver(prob3, solver_parameters=params)
 
 
 
@@ -76,6 +96,8 @@ nullspace = VectorSpaceBasis(constant=True)
 a_phi = inner(grad(phi_sol), grad(v))*dx
 Paphi = phi_sol*v*dx + inner(grad(phi_sol), grad(v))*dx
 L_phi = q_total*v*dx
+L1_phi = q1_total*v*dx
+L2_phi = q2_total*v*dx
 phi_problem = LinearVariationalProblem(a_phi, L_phi, phi, aP=Paphi)
 phi_solver = LinearVariationalSolver(phi_problem, nullspace=nullspace,
                                     solver_parameters={
@@ -84,29 +106,76 @@ phi_solver = LinearVariationalSolver(phi_problem, nullspace=nullspace,
                                         'ksp_atol': 1.0e-11,
                                         #'ksp_converged_reason':None
                                     })
+phi_problem_1 = LinearVariationalProblem(a_phi, L1_phi, phi, aP=Paphi)
+phi_solver_1 = LinearVariationalSolver(phi_problem_1, nullspace=nullspace,
+                                    solver_parameters={
+                                        'ksp_type': 'gmres',
+                                        #'ksp_monitor': None,
+                                        'ksp_atol': 1.0e-11,
+                                        #'ksp_converged_reason':None
+                                    })
+phi_problem_2 = LinearVariationalProblem(a_phi, L2_phi, phi, aP=Paphi)
+phi_solver_2 = LinearVariationalSolver(phi_problem_2, nullspace=nullspace,
+                                    solver_parameters={
+                                        'ksp_type': 'gmres',
+                                        #'ksp_monitor': None,
+                                        'ksp_atol': 1.0e-11,
+                                        #'ksp_converged_reason':None
+                                    })
 
+du = Function(W)
 
-du_list = [Function(W) for _ in range(m)]
-u1 = Function(W); u2 = Function(W)
-
-#construct u solver
+# The u solver
 du_trial = TrialFunction(W)
 u_test = TestFunction(W)
 a = inner(u_test, du_trial)*dx
-dummy_L1 = -dtc/m*inner(u_test, Constant((0)))*dx
-#Placeholder RHS
-dummy_du = Function(W)
-#Placeholder solution
-du_prob = LinearVariationalProblem(a, dummy_L1, dummy_du)
+
+L1 = -dtc/mass*inner(u_test, grad(phi))*dx
+du = Function(W) #constructor for a class object
+du_prob = LinearVariationalProblem(a, L1, du)
 du_solv = LinearVariationalSolver(du_prob)
 
-#----velocity update------
-for i in range(m):
-    L1 = -dtc/m*inner(u_test, grad(phi)*dx)
-    du_prob.L = L1
-    du_prob.u = du_list[i]
-    du_solv.solve()
-    u_list[i].assign(u_list[i]+ du_list[i])
+t = 0.0
+step = 0
+output_freq = 20
+outfile = VTKFile("advection.pvd")
+outfile.write(*q_list, phi, *u_list)
 
+while t < T - 0.5*dt:
+    phi_solver.solve()
+    for i in range(m):
+
+        us.assign(u_list[i]) 
+        q.assign(q_list[i])
+
+        solv1.solve()
+        du_solv.solve()
+        q1_list[i].assign(q_list[i] + dq)
+        u1_list[i].assign(u_list[i] + du)
+        
+    phi_solver_1.solve()
+
+    for i in range(m):
+        
+        us.assign(u1_list[i])
+        solv2.solve()
+        du_solv.solve()
+        q2_list[i].assign(0.75*q_list[i] + 0.25*(q1_list[i] + dq))
+        u2_list[i].assign(0.75*u_list[i] + 0.25*(u1_list[i] + du))
+    
+    phi_solver_2.solve()
+    for i in range(m):
+        us.assign(u2_list[i])
+        solv3.solve()
+        du_solv.solve()
+        q_list[i].assign((1.0/3.0)*q_list[i] + (2.0/3.0)*(q2_list[i] + dq))
+        u_list[i].assign((1.0/3.0)*u_list[i] + (2.0/3.0)*(u2_list[i] + du))
+    
+    step += 1
+    t += dt
+
+    if step % output_freq == 0:
+        outfile.write(*q_list, phi,*u_list)
+        print("t=", t)
 
 
