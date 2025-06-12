@@ -4,7 +4,9 @@ import math
 ncells = 40
 L = 1
 mesh = PeriodicIntervalMesh(ncells, L)
+
 # --- Time-stepping parameters ---
+
 T = 3.0
 dt = T/500.0
 dtc = Constant(dt)
@@ -57,12 +59,10 @@ for i in range(m):
     dq_list.append(dq)
 
 # create the solvers
-
 params = {'ksp_type': 'preonly', 'pc_type': 'bjacobi', 'sub_pc_type': 'ilu'}
 
 
 #DO STUFF FOR Q!!! and dq!!!!
-
 
 
 
