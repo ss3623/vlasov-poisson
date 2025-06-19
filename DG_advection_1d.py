@@ -50,7 +50,7 @@ solv3 = LinearVariationalSolver(prob3, solver_parameters=params)
 Vcg = FunctionSpace(mesh, "CG", 1)
 phi_sol = TrialFunction(Vcg)
 dphi = TestFunction(Vcg)
-phi = Function(Vcg) #**phi in equation
+phi = Function(Vcg,name = "phi") #**phi in equation
 
 nullspace = VectorSpaceBasis(constant=True)
 
@@ -80,7 +80,7 @@ du_solv = LinearVariationalSolver(du_prob)
 t = 0.0
 step = 0
 output_freq = 20
-outfile = VTKFile("advection.pvd")
+outfile = VTKFile("advection_1d.pvd")
 outfile.write(q, phi, u)
 
 while t < T - 0.5*dt:

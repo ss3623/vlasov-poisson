@@ -12,6 +12,8 @@ dt = T/500.0
 dtc = Constant(dt)
 mass = Constant(1.0) #JUST renaming m to mass for clarity
 
+# ----------------------------------
+
 V = FunctionSpace(mesh, "DG", 1)         
 W = VectorFunctionSpace(mesh, "CG", 1) 
 Vcg = FunctionSpace(mesh, "CG", 1)
@@ -28,18 +30,24 @@ q = Function(V) #input to solver
 
 for i, q in enumerate(q_list):
     # Example: Shift center for each stream
-    q.interpolate(exp(-((x-0.5-0.1*i)**2)/(0.2**2/2)))
+    if i == 1:
+        break
+
+    q.interpolate(exp(-((x-0.5)**2)/(0.2**2/2)))
+
+
 q1_list = [Function(V) for _ in range(m)]
 q2_list = [Function(V) for _ in range(m)]
 
 u_list = []
+
 for i in range(m):
     u = Function(W)
     u_list.append(u)
 u = Function(W) #input to solver
-for i, u in enumerate(u_list):
-    # Example: Change frequency for each stream
-    u.interpolate(as_vector([0.5*(1 + sin(2*pi*(i+1)*x))]))
+
+#for i, u in enumerate(u_list):
+#    u.interpolate(as_vector([0.5*(1 + sin(2*pi*(i+1)*x))]))
 u1_list = [Function(W) for _ in range(m)]
 u2_list = [Function(W) for _ in range(m)]
 
@@ -89,7 +97,7 @@ solv3 = LinearVariationalSolver(prob3, solver_parameters=params)
 # 2. Solve Poisson for phi
 phi_sol = TrialFunction(Vcg)
 v = TestFunction(Vcg)
-phi = Function(Vcg)
+phi = Function(Vcg,name = "phi")
 nullspace = VectorSpaceBasis(constant=True)
 
 # The phi solver
@@ -138,7 +146,8 @@ du_solv = LinearVariationalSolver(du_prob)
 t = 0.0
 step = 0
 output_freq = 20
-outfile = VTKFile("advection.pvd")
+outfile = VTKFile("advection_multiple_streams.pvd")
+phi_solver.solve()
 outfile.write(*q_list, phi, *u_list)
 
 while t < T - 0.5*dt:
@@ -158,6 +167,7 @@ while t < T - 0.5*dt:
     for i in range(m):
         
         us.assign(u1_list[i])
+        q.assign(q1_list[i])
         solv2.solve()
         du_solv.solve()
         q2_list[i].assign(0.75*q_list[i] + 0.25*(q1_list[i] + dq))
@@ -166,6 +176,7 @@ while t < T - 0.5*dt:
     phi_solver_2.solve()
     for i in range(m):
         us.assign(u2_list[i])
+        q.assign(q2_list[i])
         solv3.solve()
         du_solv.solve()
         q_list[i].assign((1.0/3.0)*q_list[i] + (2.0/3.0)*(q2_list[i] + dq))
