@@ -10,8 +10,7 @@ mesh = PeriodicIntervalMesh(ncells, L)
 T = 3.0
 dt = T/500.0
 dtc = Constant(dt)
-mass = Constant(1.0) #JUST renaming m to mass for clarity
-
+mass = Constant(1.0) 
 # ----------------------------------
 
 V = FunctionSpace(mesh, "DG", 1)         
@@ -29,7 +28,6 @@ for i in range(m):
 q = Function(V) #input to solver
 
 for i, q in enumerate(q_list):
-    # Example: Shift center for each stream
     if i == 1:
         break
 
@@ -46,11 +44,8 @@ for i in range(m):
     u_list.append(u)
 u = Function(W) #input to solver
 
-#for i, u in enumerate(u_list):
-#    u.interpolate(as_vector([0.5*(1 + sin(2*pi*(i+1)*x))]))
 u1_list = [Function(W) for _ in range(m)]
 u2_list = [Function(W) for _ in range(m)]
-
 
 dq_trial = TrialFunction(V)
 psi = TestFunction(V)
@@ -79,7 +74,7 @@ for i,q in enumerate(q2_list):
         q2_total = q
     else:
         q2_total += q  
- 
+
 dq = Function(V)  # Placeholder for the total change in q
 
 
@@ -91,7 +86,6 @@ prob2 = LinearVariationalProblem(a, L2, dq)
 solv2 = LinearVariationalSolver(prob2, solver_parameters=params)
 prob3 = LinearVariationalProblem(a, L3, dq)
 solv3 = LinearVariationalSolver(prob3, solver_parameters=params)
-
 
 
 # 2. Solve Poisson for phi
