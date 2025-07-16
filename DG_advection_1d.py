@@ -1,23 +1,38 @@
 from firedrake import *
 import math
+import matplotlib.pyplot as plt
+'''The weight'''
 
+def compute_w(u):
+    w = Function(u.function_space())
+    w_expr = inner(u,u)
+    w.interpolate(w_expr)   
+    return w
 ncells = 40
 L = 1
 mesh = PeriodicIntervalMesh(ncells, L)
-
 V = FunctionSpace(mesh, "DG", 1)
 W = VectorFunctionSpace(mesh, "CG", 1)
 
 x, = SpatialCoordinate(mesh)
 
 u = Function(W)
-q = Function(V).interpolate(exp(-(x-0.5)**2/(0.2**2/2)))
+#q = Function(V).interpolate(exp(-(x-0.5)**2/(0.2**2/2)))
+#q = Function(V).interpolate(1 + 0.01 * cos(2 * pi * x))
+q = Function(V).interpolate(
+    exp(-(x-0.3)**2/(0.05**2/2)) 
+  + exp(-(x-0.5)**2/(0.05**2/2)) + exp(-(x-0.7)**2/(0.05**2/2))
+)
+
 q_init = Function(V).assign(q)
+M = Function(V)
+w = compute_w(u)
+
 
 #---time stepping parameters---
 T = 3
 dt = T/500
-T = dt*5
+#T = dt*5
 dtc = Constant(dt)
 q_in = Constant(1.0)
 mass = Constant(1.0)
@@ -28,7 +43,7 @@ psi = TestFunction(V)
 a = psi*dq_trial*dx
 
 us = Function(W)
-n = FacetNormal(mesh)
+n =  FacetNormal(mesh)
 un = 0.5*(dot(us, n) + abs(dot(us, n)))
 
 L1 = dtc*(inner(us, grad(psi))*q*dx
@@ -51,7 +66,7 @@ solv3 = LinearVariationalSolver(prob3, solver_parameters=params)
 Vcg = FunctionSpace(mesh, "CG", 1)
 phi_sol = TrialFunction(Vcg)
 dphi = TestFunction(Vcg)
-phi = Function(Vcg,name = "phi") #**phi in equation
+phi = Function(Vcg,name = "phi") 
 
 nullspace = VectorSpaceBasis(constant=True)
 
@@ -72,7 +87,7 @@ u_test = TestFunction(W)
 a = inner(u_test, du_trial)*dx
 
 L1 = -dtc/mass*inner(u_test, grad(phi))*dx
-du = Function(W) #constructor for a class object
+du = Function(W) 
 u1 = Function(W)
 u2 = Function(W)
 du_prob = LinearVariationalProblem(a, L1, du)
@@ -82,30 +97,27 @@ t = 0.0
 step = 0
 output_freq = 20
 phi_solver.solve()
-print(norm(phi), "single")
 outfile = VTKFile("advection_1d.pvd")
 outfile.write(q, phi, u)
 
+projected = VTKFile("proj_output.pvd", project_output=True)
+projected.write(q,phi)
+
 while t < T - 0.5*dt:
     phi_solver.solve()
-    us.assign(u) #begin loop
+    us.assign(u) 
     solv1.solve()
     du_solv.solve()
     q1.assign(q + dq)
     u1.assign(u + du)
-    print(dt, i, norm(u1), "u")
-    print(norm(q1), "q")
 
     phi_solver.solve()
-    #print(norm(phi), 'phi stage 2')
     us.assign(u1)
     solv2.solve()
     du_solv.solve()
     q2.assign(0.75*q + 0.25*(q1 + dq))
     u2.assign(0.75*u + 0.25*(u1 + du))
-    #print(dt, i, norm(u2), "u2")
-    #print(norm(q2), "q2")
-    
+
     phi_solver.solve()
     us.assign(u2)
     solv3.solve()
@@ -118,4 +130,6 @@ while t < T - 0.5*dt:
 
     if step % output_freq == 0:
         outfile.write(q, phi,u)
-        print("t=", t)
+        projected.write(q, phi)
+        print("step = ", step)
+
