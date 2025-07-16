@@ -17,6 +17,7 @@ q_init = Function(V).assign(q)
 #---time stepping parameters---
 T = 3
 dt = T/500
+T = dt*5
 dtc = Constant(dt)
 q_in = Constant(1.0)
 mass = Constant(1.0)
@@ -80,6 +81,8 @@ du_solv = LinearVariationalSolver(du_prob)
 t = 0.0
 step = 0
 output_freq = 20
+phi_solver.solve()
+print(norm(phi), "single")
 outfile = VTKFile("advection_1d.pvd")
 outfile.write(q, phi, u)
 
@@ -90,13 +93,18 @@ while t < T - 0.5*dt:
     du_solv.solve()
     q1.assign(q + dq)
     u1.assign(u + du)
+    print(dt, i, norm(u1), "u")
+    print(norm(q1), "q")
 
     phi_solver.solve()
+    #print(norm(phi), 'phi stage 2')
     us.assign(u1)
     solv2.solve()
     du_solv.solve()
     q2.assign(0.75*q + 0.25*(q1 + dq))
     u2.assign(0.75*u + 0.25*(u1 + du))
+    #print(dt, i, norm(u2), "u2")
+    #print(norm(q2), "q2")
     
     phi_solver.solve()
     us.assign(u2)
