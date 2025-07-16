@@ -1,16 +1,12 @@
 from firedrake import *
 import math
 
-#Removed an unintended `break` that prevented streams 1…M from being initialized.
-#  - Fixed typo in velocity initialization (`u0_expr`).
-#  - Now explicitly loop over all `m` streams with:
-#        qi.interpolate(q0_expr)
-#        ui.interpolate(u0_expr)
-# Effect:
-#  - The "all-streams-equal" test now starts with q_i = q_single and u_i = u_single for all i.
-#  - Collapse test returns L2 error ≈ 0, confirming correct reduction to single-stream.
+def w(u):
+    w1 = Function(u.function_space())
+    w_expr = inner(u,u)
+    w1.interpolate(w_expr)   
+    return w1
 
-# Mesh setup
 ncells = 40
 L = 1
 mesh = PeriodicIntervalMesh(ncells, L)
@@ -22,7 +18,6 @@ T = dt*5.0
 dtc = Constant(dt)
 mass = Constant(1.0)
 # ----------------------------------
-
 # Function spaces
 V   = FunctionSpace(mesh, "DG", 1)
 W   = VectorFunctionSpace(mesh, "CG", 1)
@@ -43,7 +38,12 @@ u2_list = [Function(W, name=f"u2_{i}") for i in range(m)]
 
 # Shared initial profiles: Gaussian density and constant velocity
 q0_expr = exp(-((x - 0.5)**2) / (0.2**2/2))/2    # Gaussian bump
-u0_expr = as_vector([0.0])                
+u0_expr = as_vector([0.0])
+m = Function(V)
+m_exp = w(u_list[0])*q_list[0]
+for i in range (1,m):
+    m_exp += w(u_list[i])*q_list[i]
+
 
 # Apply the same initialization to every stream
 for qi, ui in zip(q_list, u_list):
@@ -118,11 +118,11 @@ t = 0.0
 step = 0
 output_freq = 20
 outfile = VTKFile("advection_multiple_streams.pvd")
-
+projected = VTKFile("proj_output_multiple_strms.pvd", project_output=True)
 # Initial write
 phi_solver.solve()
-print(norm(phi), "multiple")
 outfile.write(*q_list, phi, *u_list)
+projected.write(*q_list, phi, *u_list)
 
 # Main RK3 loop
 while t < T - 0.5*dt:
@@ -135,12 +135,9 @@ while t < T - 0.5*dt:
         du_solv.solve()
         q1_list[i].assign(q_list[i] + dq)
         u1_list[i].assign(u_list[i] + du)
-        print(dt, i, norm(u1_list[i]), "u")
-    print(norm(q1_list[0]+q1_list[1]), "q")
 
     # Stage 2
     phi_solver_1.solve()
-    #print(norm(phi), 'phi stage 2')
     for i in range(m):
         us.assign(u1_list[i])
         q1.assign(q1_list[i])
@@ -148,9 +145,7 @@ while t < T - 0.5*dt:
         du_solv.solve()
         q2_list[i].assign(0.75*q_list[i] + 0.25*(q1_list[i] + dq))
         u2_list[i].assign(0.75*u_list[i] + 0.25*(u1_list[i] + du))
-        #print(dt, i, norm(u2_list[i]), "u2")
-    #print(norm(q2_list[0]+q2_list[1]), "q2")
-
+   
     # Stage 3
     phi_solver_2.solve()
     for i in range(m):
@@ -167,4 +162,5 @@ while t < T - 0.5*dt:
     # Output
     if step % output_freq == 0:
         outfile.write(*q_list, phi, *u_list)
+        projected.write(*q_list, phi, *u_list)
         print("t=", t)
