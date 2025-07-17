@@ -313,6 +313,8 @@ f2 = Function(V)
 # timesteps. ::
 
 outfile = VTKFile("vlasov.pvd")
+projected = VTKFile("proj_vp1d.pvd", project_output=True)
+
 
 # We want to output the initial condition, so need to solve for the electrostatic
 # potential that corresponds to the initial density. ::
@@ -360,6 +362,7 @@ for step in ProgressBar("Timestep").iter(range(nsteps)):
     if dumpn % ndump == 0:
         dumpn = 0
         outfile.write(fn, phi)
+        projected.write(fn,phi)
 
 # Images of the solution at shown below.
 #
