@@ -1,5 +1,6 @@
 from firedrake import *
 from firedrake.__future__ import interpolate
+import numpy as np
 
 #open file 1: load 1d multistream data
 with CheckpointFile("multistream_checkpoint.h5", 'r') as afile:
@@ -26,4 +27,7 @@ line = mesh.Mesh(plex, dim=2)
 
 #---------------- the moments stuff ------------------
 
-#currently in the other two scripts. check those two, then continue writing here 
+#currently in the other two scripts. check those two, then continue writing here
+'''next tasks:
+- transfer 1d moments to immersed mesh (replacing mesh coordinates)
+- interpolate 2d moments to the 1d immersed mesh''' 
