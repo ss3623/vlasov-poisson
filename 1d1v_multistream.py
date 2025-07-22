@@ -11,8 +11,24 @@ V_dg = FunctionSpace(mesh, "DG", 1)     # for charge density q
 V_cg = FunctionSpace(mesh, "CG", 1)     # for potential phi
 W_cg = VectorFunctionSpace(mesh, "CG", 1)  # for velocity u
 
+def w(u):
+    return u[0]
+
+# Initialize lists for each stream
+q_list = [Function(V_dg, name=f"q{i+1}") for i in range(M)]
+u_list = [Function(W_cg, name=f"u{i+1}") for i in range(M)]
+phi = Function(V_cg, name="phi")
+
+
 # Coordinate
 x = SpatialCoordinate(mesh)[0]
+
+# Initial conditions - different for each stream
+for i in range(M):
+    center = 0.3 + i * 0.4  # stream 1 at x=0.3, stream 2 at x=0.7
+    q_list[i].interpolate(exp(-(x-center)**2/(0.05**2)))
+    u_list[i].interpolate(as_vector([0.1]))        # SAME initial velocity for all!
+
 
 # Time stepping
 T = 3.0
@@ -26,25 +42,11 @@ mass = Constant(1.0)
 # Number of streams
 M = 2
 
-# Initialize lists for each stream
-q_list = [Function(V_dg, name=f"q{i+1}") for i in range(M)]
-u_list = [Function(W_cg, name=f"u{i+1}") for i in range(M)]
-
 # RK3 stage functions
 q1_list = [Function(V_dg, name=f"q1_{i+1}") for i in range(M)]
 q2_list = [Function(V_dg, name=f"q2_{i+1}") for i in range(M)]
 u1_list = [Function(W_cg, name=f"u1_{i+1}") for i in range(M)]
 u2_list = [Function(W_cg, name=f"u2_{i+1}") for i in range(M)]
-
-# Initial conditions - different for each stream
-for i in range(M):
-    center = 0.3 + i * 0.4  # stream 1 at x=0.3, stream 2 at x=0.7
-    q_list[i].interpolate(exp(-(x-center)**2/(0.05**2)))
-    u_list[i].interpolate(as_vector([0.1]))        # SAME initial velocity for all!
-
-
-# Potential function
-phi = Function(V_cg, name="phi")
 
 # Placeholder functions for solvers
 q_temp = Function(V_dg)   # temporary q for solver
@@ -124,6 +126,13 @@ poisson_solver.solve()
 q_total = Function(V_dg, name="q_total")
 q_total.interpolate(sum(q_list))  # initial q1 + q2
 outfile.write(*q_list, phi, *u_list,q_total)
+#moment function
+def compute_moment(q_list,u_list):
+    '''Compute moment Σ w(u_i) * q_i'''
+    moment = Function(V_dg, name = "moment")
+    moment_expr = sum([w(ui) * qi for ui,qi in zip(u_list,q_list)])
+    moment.interpolate(moment_expr)
+    return moment
 #SSP-RK3 time loop
 while t < T - 0.5*dt:
     
@@ -162,6 +171,7 @@ while t < T - 0.5*dt:
 
     # Output
     if step % output_freq == 0:
+        moment = compute_moment(q_list, u_list) #compute moment inside loop
         q_total.interpolate(sum(q_list))  # update q_total
         outfile.write(*q_list, phi, *u_list, q_total)
         print(f"Step: {step}, Time: {t:.3f}")
