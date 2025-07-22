@@ -177,3 +177,11 @@ while t < T - 0.5*dt:
         print(f"Step: {step}, Time: {t:.3f}")
 
 print(f"Simulation complete! Total steps: {step}")
+#write checkpoint
+with Checkpointfile("multistream_checkpoint.h5",'w') as afile:
+    for i in range(M):
+        afile.save_function(q_list[i], name=f"q_{i+1}")
+        afile.save_function(u_list[i], name=f"u_{i+1}")
+    
+    afile.save_function(phi, name="phi")
+    
