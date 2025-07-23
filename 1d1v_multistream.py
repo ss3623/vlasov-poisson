@@ -6,6 +6,9 @@ ncells = 40
 L = 1
 mesh = PeriodicIntervalMesh(ncells, L)
 
+# Number of streams
+M = 2
+
 # Function spaces
 V_dg = FunctionSpace(mesh, "DG", 1)     # for charge density q
 V_cg = FunctionSpace(mesh, "CG", 1)     # for potential phi
@@ -38,9 +41,6 @@ t = 0.0
 # Constants
 dtc = Constant(dt)
 mass = Constant(1.0)
-
-# Number of streams
-M = 2
 
 # RK3 stage functions
 q1_list = [Function(V_dg, name=f"q1_{i+1}") for i in range(M)]
