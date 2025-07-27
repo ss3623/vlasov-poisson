@@ -4,10 +4,10 @@ import math
 # Mesh setup
 ncells = 40
 L = 1
-mesh = PeriodicIntervalMesh(ncells, L)
+mesh = PeriodicIntervalMesh(ncells, L,name = "1d_mesh")
 
 # Number of streams
-M = 2
+M = 4
 
 # Function spaces
 V_dg = FunctionSpace(mesh, "DG", 1)     # for charge density q
@@ -15,7 +15,7 @@ V_cg = FunctionSpace(mesh, "CG", 1)     # for potential phi
 W_cg = VectorFunctionSpace(mesh, "CG", 1)  # for velocity u
 
 def w(u):
-    return u[0]
+    return (u[0])**2
 
 # Initialize lists for each stream
 q_list = [Function(V_dg, name=f"q{i+1}") for i in range(M)]
@@ -34,7 +34,7 @@ for i in range(M):
 
 
 # Time stepping
-T = 3.0
+T = 8.0
 dt = T/500.0
 t = 0.0
 
@@ -133,6 +133,9 @@ def compute_moment(q_list,u_list):
     moment_expr = sum([w(ui) * qi for ui,qi in zip(u_list,q_list)])
     moment.interpolate(moment_expr)
     return moment
+im = compute_moment(q_list,u_list)
+initial_moment = assemble(im * dx)
+print(f"Initial moment (w(v) = v) : ",initial_moment)
 #SSP-RK3 time loop
 while t < T - 0.5*dt:
     
@@ -174,14 +177,22 @@ while t < T - 0.5*dt:
         moment = compute_moment(q_list, u_list) #compute moment inside loop
         q_total.interpolate(sum(q_list))  # update q_total
         outfile.write(*q_list, phi, *u_list, q_total)
-        print(f"Step: {step}, Time: {t:.3f}")
+        m = assemble(moment * dx)- initial_moment
+        #print(f"Step: {step}, Time: {t:.3f}")
+        #print(f"Change in Moment: {m:.6f})")
+print(assemble(moment*dx))
 
 print(f"Simulation complete! Total steps: {step}")
 #write checkpoint
-with Checkpointfile("multistream_checkpoint.h5",'w') as afile:
-    for i in range(M):
-        afile.save_function(q_list[i], name=f"q_{i+1}")
-        afile.save_function(u_list[i], name=f"u_{i+1}")
-    
+with CheckpointFile("multistream_checkpoint.h5",'w') as afile:
+    afile.save_mesh(mesh, "1d_mesh")    
     afile.save_function(phi, name="phi")
-    
+
+    for i, q in enumerate(q_list):
+        afile.save_function(q, name=f"q_{i+1}")
+ 
+    for i, u in enumerate(u_list):
+        afile.save_function(u, name=f"u_{i+1}")
+
+#plot change in moment 
+#plots of errors instead of constant printing!

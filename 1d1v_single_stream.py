@@ -159,12 +159,12 @@ while t < T - 0.5*dt:
         outfile.write(q, phi,u)
         # Calculate current values
         current_charge = assemble(q * dx) 
-        M0.interpolate(u[0] * q)
+        M0.interpolate(u[0]**2 * q)
         total_M0 = assemble(M0 * dx)
 
         # Calculate relative errors
         charge_error = abs(current_charge - initial_charge) / abs(initial_charge)
-        moment_error = abs(total_M0 - initial_moment) / abs(initial_moment)                                     
+        moment_error = (total_M0 - initial_moment)                                    
 
         print(f"Step: {step}, Time: {t:.3f}")
         print(f"  Total charge: {current_charge:.6f} (error: {charge_error:.2e})")
