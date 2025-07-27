@@ -6,7 +6,7 @@ base_mesh = PeriodicIntervalMesh(ncells, L)
 
 H = 10.0
 nlayers = 50
-mesh = ExtrudedMesh(base_mesh, layers=nlayers, layer_height=H/nlayers)
+mesh = ExtrudedMesh(base_mesh, layers=nlayers, layer_height=H/nlayers,name = "2d_mesh")
 
 x, v = SpatialCoordinate(mesh)
 mesh.coordinates.interpolate(as_vector([x, v-H/2]))
@@ -68,11 +68,11 @@ df_L = dtc*(div(u*q)*fstar*dx
 df_problem = LinearVariationalProblem(df_a, df_L, df_out)
 df_solver = LinearVariationalSolver(df_problem)
 
-T = 50.0
+T = 8.0
 t = 0.
 ndump = 100
 dumpn = 0
-nsteps = 5000
+nsteps = 500
 dt = T/nsteps
 dtc.assign(dt)
 
@@ -90,14 +90,16 @@ phi.assign(.0)
 
 #----------the moments stuff------------------------------------
 
-m_trial = TrialFunction(Wbar) #moment
-r_test = TestFunction(Wbar)
+m_trial = TrialFunction(Wbar) #trial fn for moment
+r_test = TestFunction(Wbar) 
+m = Function(Wbar)
 a_moment = r_test * m_trial * dx
-L_moment = H * r_test * v *fn *dx #w(v) = v, edit this later?
-moment_problem = LinearVariationalProblem(a_moment, L_moment, m_trial)
-moment_solver = LinearVariationalSolve(moment_problem)
+L_moment = H * r_test *v *fn * dx 
+moment_problem = LinearVariationalProblem(a_moment, L_moment, m)
+moment_solver = LinearVariationalSolver(moment_problem)
 moment_solver.solve()
-
+initial_moment = assemble(m * dx)
+print(f"Initial moment (w(v) = v) : ",initial_moment)
 for step in ProgressBar("Timestep").iter(range(nsteps)):
 
    fstar.assign(fn)
@@ -121,9 +123,12 @@ for step in ProgressBar("Timestep").iter(range(nsteps)):
        dumpn = 0
        outfile.write(fn, phi)
        projected.write(fn,phi)
+       moment_solver.solve()
+       current_moment = assemble (m* dx)
+       print(f"Change in moment: {current_moment-initial_moment}")
        
-with Checkpointfile("vlasov_checkpoint.h5",'w' as afile):
-    afile.save_mesh(mesh, name = "2d_mesh")
+with CheckpointFile("vlasov_checkpoint.h5",'w') as afile:
+    afile.save_mesh(mesh,"2d_mesh")
     afile.save_function(fn,name = "fn")
     afile.save_function(phi, name = "phi")
 
