@@ -1,6 +1,7 @@
 from firedrake import *
 from firedrake.__future__ import interpolate
 import numpy as np
+
 M = 4
 q_list = []
 u_list = []
@@ -19,6 +20,7 @@ with CheckpointFile("vlasov_checkpoint.h5", 'r') as afile:
     mesh_2d = afile.load_mesh("2d_mesh")
     fn = afile.load_function(mesh_2d, "fn")
     phi_2d = afile.load_function(mesh_2d, "phi")
+
 # mesh 2d to 1d immersed
 
 x,  = SpatialCoordinate(mesh_1d)
@@ -56,7 +58,7 @@ outfile.write(*q_line,*u_line,f)
 #weight function w(v) = v (for now)
 
 def w(u):
-    return u[0]
+    return (u[0])**2
 
 def compute_moment(q_list,u_list):
     '''Compute moment Σ w(u_i) * q_i'''
@@ -64,15 +66,14 @@ def compute_moment(q_list,u_list):
     moment_expr = sum([w(ui) * qi for ui,qi in zip(u_list,q_list)])
     moment.interpolate(moment_expr)
     return moment
-om = compute_moment(q_list, u_list)
-old_moment = assemble(om * dx)
+
 nm = compute_moment(q_line,u_line)
 new_moment = assemble(nm * dx)
-print(f"Old moment (w(v) = v) : ",old_moment)
-print(f"New moment (w(v) = v) : ",new_moment)
 
+print(f"New moment (w(v) = v) : ",new_moment)
+print("I have successfully transferred 1d moments to the immersed mesh!")
 
 #currently in the other two scripts. check those two, then continue writing here
-'''next tasks:
-- transfer 1d moments to immersed mesh (replacing mesh coordinates)
+'''
 - interpolate 2d moments to the 1d immersed mesh''' 
+
