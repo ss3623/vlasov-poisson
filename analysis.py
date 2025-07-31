@@ -3,8 +3,10 @@ from firedrake.__future__ import interpolate
 import numpy as np
 
 M = 4
+H = 10.0
 q_list = []
 u_list = []
+
 #open file 1: load 1d multistream data
 with CheckpointFile("multistream_checkpoint.h5", 'r') as afile:
     #create lists 
@@ -33,28 +35,42 @@ V_dg = FunctionSpace(line, "DG", 1)     # for charge density q
 V_cg = FunctionSpace(line, "CG", 1)     # for potential phi
 W_cg = VectorFunctionSpace(line, "CG", 1)  # for velocity u
 
-
 q_line = []
 u_line = []
+constants = [-3.0, -1.5, 1.5, 3.0]
+for i, ci in enumerate(constants):
+    u_list[i].assign(Constant(ci))
+# First moment: ∫ v * q(x,v,0) dv = Σ vi(x,0) * qi(x,0)
+first_moment = Function(V_dg, name="first_moment")
+first_moment_expr = sum([ui * qi for ui, qi in zip(u_line, q_line)])
+first_moment.interpolate(first_moment_expr)
 
-for i in range(M):
-    f = q_list[i]
-    g = Function(functionspaceimpl.WithGeometry.create(f.function_space(), line),
-             val=f.topological)
-    q_line.append(g)
-    f = u_list[i]
-    g = Function(functionspaceimpl.WithGeometry.create(f.function_space(), line),
-             val=f.topological)
-    u_line.append(g)
+# Integrate over spatial domain
+first_moment_integral = assemble(first_moment * dx)
+print(f"First moment (momentum): {first_moment_integral}")
+
+
+#outfile = VTKFile("analysis_vlasov.pvd")
+#outfile.write(*q_line,*u_line,f)
 
 f = Function(V_dg)
 f.assign(assemble(interpolate(fn, V_dg)))
 
-outfile = VTKFile("analysis_vlasov.pvd")
-outfile.write(*q_line,*u_line,f)
+#------the moments stuff: vp1d to 2d-------------------
 
+V = FunctionSpace(line, 'DQ', 1)
+Wbar = FunctionSpace(line, 'CG', 1, vfamily='R', vdegree=0)
+m_trial = TrialFunction(Wbar) #trial fn for moment
+r_test = TestFunction(Wbar) 
+m = Function(Wbar)
+a_moment = r_test * m_trial * dx
+L_moment = H * r_test * v *f * dx 
+moment_problem = LinearVariationalProblem(a_moment, L_moment, m)
+moment_solver = LinearVariationalSolver(moment_problem)
+moment_solver.solve()
+initial_moment = assemble(m * dx)
 
-#---------------- the moments stuff ------------------
+#---------------- the moments stuff : multistream to 2d------------------
 #weight function w(v) = v (for now)
 
 def w(u):
@@ -73,7 +89,9 @@ new_moment = assemble(nm * dx)
 print(f"New moment (w(v) = v) : ",new_moment)
 print("I have successfully transferred 1d moments to the immersed mesh!")
 
-#currently in the other two scripts. check those two, then continue writing here
-'''
-- interpolate 2d moments to the 1d immersed mesh''' 
+constants = [-3.0, -1.5, 1.5, 3.0]
+for i, ci in enumerate(constants):
+    u_list[i].assign(Constant(ci))
+
+
 
