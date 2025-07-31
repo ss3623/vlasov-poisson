@@ -72,7 +72,7 @@ T = 8.0
 t = 0.
 ndump = 100
 dumpn = 0
-nsteps = 500
+nsteps = 1000
 dt = T/nsteps
 dtc.assign(dt)
 
