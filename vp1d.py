@@ -1,4 +1,6 @@
 from firedrake import *
+from config import initial_condition
+
 
 ncells = 50
 L = 8*pi
@@ -18,7 +20,9 @@ Wbar = FunctionSpace(mesh, 'CG', 1, vfamily='R', vdegree=0)
 fn = Function(V, name="density")
 A = Constant(0.05)
 k = Constant(0.5)
-fn.interpolate(v**2*exp(-v**2/2)*(1 + A*cos(k*x))/(2*pi)**0.5)
+# Use directly:
+fn.interpolate(exp(-v**2/2) * (1 + A*cos(k*x)) / sqrt(2*pi))
+
 
 One = Function(V).assign(1.0)
 fbar = assemble(fn*dx)/assemble(One*dx)
@@ -68,7 +72,7 @@ df_L = dtc*(div(u*q)*fstar*dx
 df_problem = LinearVariationalProblem(df_a, df_L, df_out)
 df_solver = LinearVariationalSolver(df_problem)
 
-T = 8.0
+T = 8.0 #spiral patterns???? #regridding - T = 15- some rolling up of solutions
 t = 0.
 ndump = 100
 dumpn = 0
@@ -94,11 +98,12 @@ m_trial = TrialFunction(Wbar) #trial fn for moment
 r_test = TestFunction(Wbar) 
 m = Function(Wbar)
 a_moment = r_test * m_trial * dx
-L_moment = H * r_test *v *fn * dx 
+L_moment = H * r_test * u[0] *fn * dx 
 moment_problem = LinearVariationalProblem(a_moment, L_moment, m)
 moment_solver = LinearVariationalSolver(moment_problem)
 moment_solver.solve()
 initial_moment = assemble(m * dx)
+
 print(f"Initial moment (w(v) = v) : ",initial_moment)
 for step in ProgressBar("Timestep").iter(range(nsteps)):
 
