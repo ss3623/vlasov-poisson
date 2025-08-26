@@ -1,21 +1,30 @@
 from firedrake import *
 import math
+from scipy.special import roots_hermite
+import numpy as np
+from config import M,initial_condition
 
+print(f"Using M = {M} streams")
 # Mesh setup
 ncells = 40
-L = 1
+L = 8*pi
+A = Constant(0.05) 
+k = Constant(0.5) 
 mesh = PeriodicIntervalMesh(ncells, L,name = "1d_mesh")
 
-# Number of streams
-M = 4
+
+#get hermite points
+v_points, weights = roots_hermite(M)
+v_scaled = v_points / np.sqrt(2)
 
 # Function spaces
 V_dg = FunctionSpace(mesh, "DG", 1)     # for charge density q
 V_cg = FunctionSpace(mesh, "CG", 1)     # for potential phi
 W_cg = VectorFunctionSpace(mesh, "CG", 1)  # for velocity u
+#weights for the moment function
 
 def w(u):
-    return (u[0])**2
+    return (u[0])**1
 
 # Initialize lists for each stream
 q_list = [Function(V_dg, name=f"q{i+1}") for i in range(M)]
@@ -27,10 +36,25 @@ phi = Function(V_cg, name="phi")
 x = SpatialCoordinate(mesh)[0]
 
 # Initial conditions - different for each stream
+
+v_points, weights = roots_hermite(M)
+velocities = v_points/np.sqrt(2)
+
+
+# Replace your initialization with this simpler version:
 for i in range(M):
-    center = 0.3 + i * 0.4  # stream 1 at x=0.3, stream 2 at x=0.7
-    q_list[i].interpolate(exp(-(x-center)**2/(0.05**2)))
-    u_list[i].interpolate(as_vector([0.1]))        # SAME initial velocity for all!
+    v_i = velocities[i]
+    spatial_part = (1 + A*cos(k*x))
+    n_i = weights[i] *spatial_part * exp(v_i**2/2)/np.sqrt(2*pi)
+    u_list[i].interpolate(as_vector([v_i]))
+    q_list[i].interpolate(n_i)
+
+# Check initial setup
+for i in range(M):
+    qi_val = assemble(q_list[i] * dx)
+    vi_val = velocities[i]
+    moment_i = qi_val * vi_val  # contribution to first moment
+    print(f"Stream {i}: q={qi_val:.6f}, v={vi_val:.6f}, moment_contrib={moment_i:.6f}")
 
 
 # Time stepping
@@ -116,6 +140,7 @@ du = Function(W_cg)
 velocity_problem = LinearVariationalProblem(a_vel, L_vel, du)
 velocity_solver = LinearVariationalSolver(velocity_problem)
 
+
 # Output setup
 step = 0
 output_freq = 20
@@ -126,7 +151,9 @@ poisson_solver.solve()
 q_total = Function(V_dg, name="q_total")
 q_total.interpolate(sum(q_list))  # initial q1 + q2
 outfile.write(*q_list, phi, *u_list,q_total)
-#moment function
+
+
+
 def compute_moment(q_list,u_list):
     '''Compute moment Σ w(u_i) * q_i'''
     moment = Function(V_dg, name = "moment")
@@ -135,7 +162,7 @@ def compute_moment(q_list,u_list):
     return moment
 im = compute_moment(q_list,u_list)
 initial_moment = assemble(im * dx)
-print(f"Initial moment (w(v) = v) : ",initial_moment)
+print(f"Initial moment : ",initial_moment)
 #SSP-RK3 time loop
 while t < T - 0.5*dt:
     
@@ -179,11 +206,12 @@ while t < T - 0.5*dt:
         outfile.write(*q_list, phi, *u_list, q_total)
         m = assemble(moment * dx)- initial_moment
         #print(f"Step: {step}, Time: {t:.3f}")
-        #print(f"Change in Moment: {m:.6f})")
-print(assemble(moment*dx))
+        #ƒinitprint(f"Change in Moment: {m:.6f})")
+
 
 print(f"Simulation complete! Total steps: {step}")
-#write checkpoint
+print(f"Final moment: {assemble(moment*dx)}")
+#write checkpointƒiniti
 with CheckpointFile("multistream_checkpoint.h5",'w') as afile:
     afile.save_mesh(mesh, "1d_mesh")    
     afile.save_function(phi, name="phi")
