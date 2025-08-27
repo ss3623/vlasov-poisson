@@ -12,16 +12,10 @@ A = Constant(0.05)
 k = Constant(0.5) 
 mesh = PeriodicIntervalMesh(ncells, L,name = "1d_mesh")
 
-
-#get hermite points
-v_points, weights = roots_hermite(M)
-v_scaled = v_points / np.sqrt(2)
-
 # Function spaces
 V_dg = FunctionSpace(mesh, "DG", 1)     # for charge density q
 V_cg = FunctionSpace(mesh, "CG", 1)     # for potential phi
 W_cg = VectorFunctionSpace(mesh, "CG", 1)  # for velocity u
-#weights for the moment function
 
 def w(u):
     return (u[0])**1
