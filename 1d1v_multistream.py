@@ -6,7 +6,7 @@ from config import M
 
 print(f"Using M = {M} streams")
 def w(u):
-    return (1)
+    return u**1
 ncells = 40
 L = 8*pi
 A = Constant(0.05) 
@@ -28,8 +28,8 @@ phi = Function(V_cg, name="phi")
 
 v_points, weights = roots_hermite(M)
 print(f"sum: {(sum(weights))})")
-velocities = v_points * np.sqrt(2)  # Standard transformation
-adjusted_weights = weights* np.sqrt(2)  # Makes weights sum to 1 
+velocities = v_points * np.sqrt(2)  
+adjusted_weights = weights* np.sqrt(2)  
 
 for i in range(M):
     v_i = velocities[i]
@@ -45,16 +45,17 @@ print(f"Initial total charge: {initial_charge}")
 def compute_moment(q_list,u_list):
     moment = Function(V_dg, name = "moment")
     moment_expr = sum([w(ui[0]) * qi for ui,qi in zip(u_list,q_list)])
+    #moment_expr = sum([1*qi for qi in q_list])
     moment.interpolate(moment_expr)
     return moment
 
 im = compute_moment(q_list,u_list)
 initial_moment = assemble(im * dx)
-print(f"Initial moment : ",initial_moment**2)
+print(f"Initial moment : ",initial_moment)
 breakpoint()
 
 # Time stepping
-T = 20
+T = 8
 dt = T/500.0
 t = 0.0
 
