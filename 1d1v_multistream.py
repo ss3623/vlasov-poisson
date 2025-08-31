@@ -1,14 +1,12 @@
-from firedrake import *
+from firedrake import * # type: ignore
 import math
 from scipy.special import roots_hermite
 import numpy as np
-from config import M,initial_condition
+from config import M
 
 print(f"Using M = {M} streams")
 def w(u):
-    return (u[0])**1
-
-# Mesh setup
+    return (1)
 ncells = 40
 L = 8*pi
 A = Constant(0.05) 
@@ -28,25 +26,35 @@ q_list = [Function(V_dg, name=f"q{i+1}") for i in range(M)]
 u_list = [Function(W_cg, name=f"u{i+1}") for i in range(M)]
 phi = Function(V_cg, name="phi")
 
-##### hermite stuff #############
-#I AM DOING THE SCALING HERE
-
 v_points, weights = roots_hermite(M)
-velocities = v_points * np.sqrt(2) 
-adjusted_weights = weights * np.sqrt(2)  
+print(f"sum: {(sum(weights))})")
+velocities = v_points * np.sqrt(2)  # Standard transformation
+adjusted_weights = weights* np.sqrt(2)  # Makes weights sum to 1 
 
 for i in range(M):
     v_i = velocities[i]
     spatial_part = (1 + A*cos(k*x))
-    n_i = adjusted_weights[i] * spatial_part/ np.sqrt(2*pi) 
+    n_i = adjusted_weights[i] * spatial_part
     u_list[i].interpolate(as_vector([v_i]))
     q_list[i].interpolate(n_i)
 
 initial_charge = compute_total_charge(q_list)
 print(f"Initial total charge: {initial_charge}")
 
+
+def compute_moment(q_list,u_list):
+    moment = Function(V_dg, name = "moment")
+    moment_expr = sum([w(ui[0]) * qi for ui,qi in zip(u_list,q_list)])
+    moment.interpolate(moment_expr)
+    return moment
+
+im = compute_moment(q_list,u_list)
+initial_moment = assemble(im * dx)
+print(f"Initial moment : ",initial_moment**2)
+breakpoint()
+
 # Time stepping
-T = 8.0
+T = 20
 dt = T/500.0
 t = 0.0
 
@@ -141,18 +149,18 @@ q_total.interpolate(sum(q_list))  # initial q1 + q2
 outfile.write(*q_list, phi, *u_list,q_total)
 
 
+with CheckpointFile("multistream_checkpoint.h5",'w') as afile:
+    
+    afile.save_function(phi, name="phi_initial")
+    afile.save_function(phi, name="phi")
+    afile.save_mesh(mesh, "1d_mesh")
 
-def compute_moment(q_list,u_list):
-    moment = Function(V_dg, name = "moment")
-    moment_expr = sum([w(ui) * qi for ui,qi in zip(u_list,q_list)])
-    moment.interpolate(moment_expr)
-    return moment
+    for i, q in enumerate(q_list):
+        afile.save_function(q, name=f"q_{i+1}")
+ 
+    for i, u in enumerate(u_list):
+        afile.save_function(u, name=f"u_{i+1}")
 
-im = compute_moment(q_list,u_list)
-initial_moment = assemble(im * dx)
-print(f"Initial moment : ",initial_moment)
-initial_momentum = sum([velocities[i] * assemble(q_list[i] * dx) for i in range(M)])
-print(f"Initial total momentum: {initial_momentum}")
 #SSP-RK3 time loop
 while t < T - 0.5*dt:
     
@@ -191,17 +199,20 @@ while t < T - 0.5*dt:
 
     # Output
     if step % output_freq == 0:
-        current_charge = compute_total_charge(q_list)
-        delta = current_charge - initial_charge
-    #print(f"Step: {step}, Charge change: {delta:.10f}")
-        #print(f"Step: {step}, Time: {t:.3f}")
-        #ƒinitprint(f"Change in Moment: {m:.6f})")
+        moment = compute_moment(q_list, u_list)
+        current_moment = assemble(moment * dx)
+        q_total.interpolate(sum(q_list))
+        outfile.write(*q_list, phi, *u_list, q_total)
+        #print(f"Step: {step}, moment: {current_moment:.10f}")
 
-print(compute_total_charge(q_list))
 print(f"Simulation complete! Total steps: {step}")
+print(f"moment after time loop: {current_moment}")
 
+final_charge = compute_total_charge(q_list)
+print(f"final charge: {final_charge}")
+''' 
 with CheckpointFile("multistream_checkpoint.h5",'w') as afile:
-    afile.save_mesh(mesh, "1d_mesh")    
+        
     afile.save_function(phi, name="phi")
 
     for i, q in enumerate(q_list):
@@ -212,3 +223,4 @@ with CheckpointFile("multistream_checkpoint.h5",'w') as afile:
 
 #plot change in moment 
 #plots of errors instead of constant printing!
+'''
