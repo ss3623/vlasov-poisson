@@ -1,5 +1,5 @@
 from firedrake import *
-from config import initial_condition
+
 
 
 ncells = 50
@@ -9,7 +9,6 @@ base_mesh = PeriodicIntervalMesh(ncells, L)
 H = 10.0
 nlayers = 50
 mesh = ExtrudedMesh(base_mesh, layers=nlayers, layer_height=H/nlayers,name = "2d_mesh")
-
 x, v = SpatialCoordinate(mesh)
 mesh.coordinates.interpolate(as_vector([x, v-H/2]))
 
@@ -20,6 +19,7 @@ Wbar = FunctionSpace(mesh, 'CG', 1, vfamily='R', vdegree=0)
 fn = Function(V, name="density")
 A = Constant(0.05)
 k = Constant(0.5)
+
 # Use directly:
 fn.interpolate(exp(-v**2/2) * (1 + A*cos(k*x)) / sqrt(2*pi))
 
@@ -90,6 +90,11 @@ fstar.assign(fn)
 phi_solver.solve()
 outfile.write(fn, phi)
 phi.assign(.0)
+      
+with CheckpointFile("vlasov_checkpoint.h5",'w') as afile:
+    afile.save_mesh(mesh,"2d_mesh")
+    afile.save_function(fn,name = "fn")
+    afile.save_function(phi, name = "phi")
 
 
 #----------the moments stuff------------------------------------
@@ -98,13 +103,14 @@ m_trial = TrialFunction(Wbar) #trial fn for moment
 r_test = TestFunction(Wbar) 
 m = Function(Wbar)
 a_moment = r_test * m_trial * dx
-L_moment = H * r_test * u[0] *fn * dx 
+L_moment = H * r_test * 1 * fn * dx 
 moment_problem = LinearVariationalProblem(a_moment, L_moment, m)
 moment_solver = LinearVariationalSolver(moment_problem)
 moment_solver.solve()
 initial_moment = assemble(m * dx)
 
-print(f"Initial moment (w(v) = v) : ",initial_moment)
+print(f"2d moment :{initial_moment}")
+breakpoint()
 for step in ProgressBar("Timestep").iter(range(nsteps)):
 
    fstar.assign(fn)
@@ -131,9 +137,4 @@ for step in ProgressBar("Timestep").iter(range(nsteps)):
        moment_solver.solve()
        current_moment = assemble (m* dx)
        print(f"Change in moment: {current_moment-initial_moment}")
-       
-with CheckpointFile("vlasov_checkpoint.h5",'w') as afile:
-    afile.save_mesh(mesh,"2d_mesh")
-    afile.save_function(fn,name = "fn")
-    afile.save_function(phi, name = "phi")
-
+ 
