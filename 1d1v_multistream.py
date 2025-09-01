@@ -6,7 +6,8 @@ from config import M
 
 print(f"Using M = {M} streams")
 def w(u):
-    return u**1
+    return u**2
+
 ncells = 40
 L = 8*pi
 A = Constant(0.05) 
@@ -27,13 +28,11 @@ u_list = [Function(W_cg, name=f"u{i+1}") for i in range(M)]
 phi = Function(V_cg, name="phi")
 
 v_points, weights = roots_hermite(M)
-print(f"sum: {(sum(weights))})")
 velocities = v_points * np.sqrt(2)  
 adjusted_weights = weights* np.sqrt(2)  
-
 for i in range(M):
     v_i = velocities[i]
-    spatial_part = (1 + A*cos(k*x))
+    spatial_part = (1 + A*cos(k*x))/sqrt(2*pi)
     n_i = adjusted_weights[i] * spatial_part
     u_list[i].interpolate(as_vector([v_i]))
     q_list[i].interpolate(n_i)
@@ -45,7 +44,6 @@ print(f"Initial total charge: {initial_charge}")
 def compute_moment(q_list,u_list):
     moment = Function(V_dg, name = "moment")
     moment_expr = sum([w(ui[0]) * qi for ui,qi in zip(u_list,q_list)])
-    #moment_expr = sum([1*qi for qi in q_list])
     moment.interpolate(moment_expr)
     return moment
 
