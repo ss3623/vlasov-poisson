@@ -88,27 +88,7 @@ fstar.assign(fn)
 phi_solver.solve()
 outfile.write(fn, phi)
 phi.assign(.0)
-      
-with CheckpointFile("vlasov_checkpoint.h5",'w') as afile:
-    afile.save_mesh(mesh,"2d_mesh")
-    afile.save_function(fn,name = "fn")
-    afile.save_function(phi, name = "phi")
 
-
-#----------the moments stuff------------------------------------
-
-m_trial = TrialFunction(Wbar) #trial fn for moment
-r_test = TestFunction(Wbar) 
-m = Function(Wbar)
-a_moment = r_test * m_trial * dx
-L_moment = H * r_test * 1 * fn * dx 
-moment_problem = LinearVariationalProblem(a_moment, L_moment, m)
-moment_solver = LinearVariationalSolver(moment_problem)
-moment_solver.solve()
-initial_moment = assemble(m * dx)
-
-print(f"2d moment :{initial_moment}")
-breakpoint()
 
 for step in ProgressBar("Timestep").iter(range(nsteps)):
 
@@ -133,7 +113,8 @@ for step in ProgressBar("Timestep").iter(range(nsteps)):
        dumpn = 0
        outfile.write(fn, phi)
        projected.write(fn,phi)
-       moment_solver.solve()
-       current_moment = assemble (m* dx)
-       print(f"Change in moment: {current_moment-initial_moment}")
- 
+
+with CheckpointFile("vlasov_checkpoint.h5",'w') as afile:
+    afile.save_mesh(mesh,"2d_mesh")
+    afile.save_function(fn,name = "fn")
+    afile.save_function(phi, name = "phi")
