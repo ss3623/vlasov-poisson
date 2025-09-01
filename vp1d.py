@@ -1,7 +1,5 @@
 from firedrake import *
 
-
-
 ncells = 50
 L = 8*pi
 base_mesh = PeriodicIntervalMesh(ncells, L)
@@ -111,6 +109,7 @@ initial_moment = assemble(m * dx)
 
 print(f"2d moment :{initial_moment}")
 breakpoint()
+
 for step in ProgressBar("Timestep").iter(range(nsteps)):
 
    fstar.assign(fn)
