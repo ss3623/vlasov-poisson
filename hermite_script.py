@@ -1,15 +1,17 @@
 from scipy.special import roots_hermite
 import numpy as np
 
-# Fixed velocities for streams
-v_fixed = np.array([-3.0, -1.0, 1.0, 3.0])
-
-# Get Hermite weights
+# Get Hermite quadrature points and weights for M points
 v_hermite, weights = roots_hermite(M)
+v_scaled = v_hermite / np.sqrt(2.0)
+weights_scaled = weights / np.sqrt(2.0)
 
 for i in range(M):
-    # Fixed velocities
-    u_list[i].interpolate(as_vector([v_fixed[i]]))
-    
-    # Hermite-weighted q values
-    q_list[i].interpolate(weights[i] * exp(-(x-0.5)**2/(0.05**2)))
+    u_list[i].interpolate(as_vector([v_scaled[i]]))
+    center = 0.3 + i * 0.4  # your original centers
+    v_i = v_scaled[i]
+    q_list[i].interpolate(weights_scaled[i] * exp(-(x-center)**2/(0.05**2)) / exp(-v_i**2))
+
+print("Hermite quadrature initialization:")
+for i in range(M):
+    print(f"Stream {i+1}: v = {v_scaled[i]:.3f}, weight = {weights_scaled[i]:.6f}")

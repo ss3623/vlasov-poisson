@@ -5,7 +5,7 @@ L = 8*pi
 base_mesh = PeriodicIntervalMesh(ncells, L)
 
 H = 10.0
-nlayers = 50
+nlayers = 100
 mesh = ExtrudedMesh(base_mesh, layers=nlayers, layer_height=H/nlayers,name = "2d_mesh")
 x, v = SpatialCoordinate(mesh)
 mesh.coordinates.interpolate(as_vector([x, v-H/2]))
@@ -89,6 +89,10 @@ phi_solver.solve()
 outfile.write(fn, phi)
 phi.assign(.0)
 
+with CheckpointFile("vlasov_checkpoint.h5",'w') as afile:
+    afile.save_mesh(mesh,"2d_mesh")
+    afile.save_function(fn,name = "fn")
+    afile.save_function(phi, name = "phi")
 
 for step in ProgressBar("Timestep").iter(range(nsteps)):
 
@@ -113,8 +117,3 @@ for step in ProgressBar("Timestep").iter(range(nsteps)):
        dumpn = 0
        outfile.write(fn, phi)
        projected.write(fn,phi)
-
-with CheckpointFile("vlasov_checkpoint.h5",'w') as afile:
-    afile.save_mesh(mesh,"2d_mesh")
-    afile.save_function(fn,name = "fn")
-    afile.save_function(phi, name = "phi")
