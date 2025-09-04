@@ -7,9 +7,6 @@ from multistream_func import run_multistream
 import os
 
 results = []
-results_multistream = []
-results_2d = []
-
 def w(u):
     return u**2
 
