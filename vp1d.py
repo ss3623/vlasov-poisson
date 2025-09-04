@@ -89,10 +89,12 @@ phi_solver.solve()
 outfile.write(fn, phi)
 phi.assign(.0)
 
+'''
 with CheckpointFile("vlasov_checkpoint.h5",'w') as afile:
     afile.save_mesh(mesh,"2d_mesh")
     afile.save_function(fn,name = "fn")
     afile.save_function(phi, name = "phi")
+'''
 
 for step in ProgressBar("Timestep").iter(range(nsteps)):
 
@@ -117,3 +119,8 @@ for step in ProgressBar("Timestep").iter(range(nsteps)):
        dumpn = 0
        outfile.write(fn, phi)
        projected.write(fn,phi)
+
+with CheckpointFile("vlasov_final_checkpoint.h5",'w') as afile:
+    afile.save_mesh(mesh,"2d_mesh")
+    afile.save_function(fn,name = "fn")
+    afile.save_function(phi, name = "phi")
