@@ -39,7 +39,7 @@ moment_value = assemble(m_2d * dx)
 print(f"2D Vlasov moment before transfer: {moment_value}")
 
 print("Loading 1D mesh...")
-sample_checkpoint = "results/M_2/multistream_M2_initial_checkpoint.h5"
+sample_checkpoint = "results/M_2/multistream_M2_final_checkpoint.h5"
 with CheckpointFile(sample_checkpoint, 'r') as afile:
     mesh_1d = afile.load_mesh("1d_mesh")
 
@@ -73,14 +73,14 @@ results_dir = "results"
 
 # Run simulations if they don't exist
 for M in M_values:
-    checkpoint_file = os.path.join(results_dir, f"M_{M}", f"multistream_M{M}_initial_checkpoint.h5")
+    checkpoint_file = os.path.join(results_dir, f"M_{M}", f"multistream_M{M}_final_checkpoint.h5")
     if not os.path.exists(checkpoint_file):
         print(f"Running simulation for M = {M}...")
         run_multistream(M, output_dir=os.path.join(results_dir, f"M_{M}"))
 
 for M in M_values:
     print(f"\nAnalyzing M = {M}...")
-    checkpoint_file = os.path.join(results_dir, f"M_{M}", f"multistream_M{M}_initial_checkpoint.h5")
+    checkpoint_file = os.path.join(results_dir, f"M_{M}", f"multistream_M{M}_final_checkpoint.h5")
     
     with CheckpointFile(checkpoint_file, 'r') as afile:
         q_list = []
