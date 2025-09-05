@@ -13,7 +13,7 @@ def w(u):
 H = 1
 
 print("Loading 2D Vlasov data...")
-with CheckpointFile("vlasov_checkpoint.h5", 'r') as afile:
+with CheckpointFile("vlasov_final_checkpoint.h5", 'r') as afile:
     mesh_2d = afile.load_mesh("2d_mesh")
     fn = afile.load_function(mesh_2d, "fn")
     phi_2d = afile.load_function(mesh_2d, "phi")
@@ -63,7 +63,7 @@ print(f"2D Vlasov moment after transfer: {m2d_total}")
 
 #breakpoint()
 
-M_values = [10,15,20,25,30,35,40]
+M_values = [2,4,5,6,10,15,20,25,30,35,40]
 results_dir = "results"
 
 for M in M_values:

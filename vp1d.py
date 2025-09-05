@@ -5,7 +5,7 @@ L = 8*pi
 base_mesh = PeriodicIntervalMesh(ncells, L)
 
 H = 10.0
-nlayers = 100
+nlayers = 200
 mesh = ExtrudedMesh(base_mesh, layers=nlayers, layer_height=H/nlayers,name = "2d_mesh")
 x, v = SpatialCoordinate(mesh)
 mesh.coordinates.interpolate(as_vector([x, v-H/2]))
