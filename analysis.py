@@ -22,11 +22,9 @@ print("Computing 2D Vlasov moment...")
 V_2d = FunctionSpace(mesh_2d, 'DQ', 1)
 Wbar_2d = FunctionSpace(mesh_2d, 'CG', 1, vfamily='R', vdegree=0)
 x, v = SpatialCoordinate(mesh_2d)
-
 m_trial = TrialFunction(Wbar_2d)
 r_test = TestFunction(Wbar_2d)
 m_2d = Function(Wbar_2d)
-
 a_moment = r_test * m_trial * dx
 L_moment = H * r_test * w(v) * fn * dx
 moment_problem = LinearVariationalProblem(a_moment, L_moment, m_2d)
@@ -34,15 +32,21 @@ moment_solver = LinearVariationalSolver(moment_problem)
 moment_solver.solve()
 moment_value = assemble(m_2d * dx)
 print(f"2D Vlasov moment before transfer: {moment_value}")
-
 print("Loading 1D mesh...")
 sample_checkpoint = "results/M_2/multistream_M2_final_checkpoint.h5"
+
 with CheckpointFile(sample_checkpoint, 'r') as afile:
     mesh_1d = afile.load_mesh("1d_mesh")
 
 V_dg_1d = FunctionSpace(mesh_1d, "DG", 1)
 V_cg_1d = FunctionSpace(mesh_1d, "CG", 1)
 W_cg_1d = VectorFunctionSpace(mesh_1d, "CG", 1)
+
+def compute_moment(q_list, u_list):
+    moment = Function(V_dg_1d, name="moment")
+    moment_expr = sum([w(ui[0]) * qi for ui, qi in zip(u_list, q_list)])
+    moment.interpolate(moment_expr)
+    return moment
 
 print("Creating immersed mesh...")
 x, = SpatialCoordinate(mesh_1d)
@@ -56,19 +60,12 @@ m2d_line = Function(V_dg)
 m2d_line.assign(assemble(interpolate(m_2d*10, V_dg)))
 m2d_total = assemble (m2d_line * dx)
 print(f"2D Vlasov moment after transfer: {m2d_total}")
-breakpoint()
 
-def compute_moment(q_list, u_list):
-    '''Compute moment Σ w(u_i) * q_i'''
-    moment = Function(V_dg_1d, name="moment")
-    moment_expr = sum([w(ui[0]) * qi for ui, qi in zip(u_list, q_list)])
-    moment.interpolate(moment_expr)
-    return moment
+#breakpoint()
 
-M_values = [10, 15,20,25,30,35,40]
+M_values = [10,15,20,25,30,35,40]
 results_dir = "results"
 
-# Run simulations if they don't exist
 for M in M_values:
     checkpoint_file = os.path.join(results_dir, f"M_{M}", f"multistream_M{M}_final_checkpoint.h5")
     if not os.path.exists(checkpoint_file):
@@ -93,7 +90,7 @@ for M in M_values:
     ms_line = Function(V_dg)
     ms_line.assign(assemble(interpolate(m_s, V_dg))) 
     print(f"moment value: {assemble(ms_line*dx)}")   
-    error = abs(ms_line - m2d_line)
+    error = (ms_line - m2d_line)
     results.append(norm(error))
 
 plt.figure(figsize=(10, 6))
@@ -105,11 +102,9 @@ plt.title("Multistream vs 2D Vlasov: L2 Norm of Error")
 plt.grid(True, alpha=0.3)
 plt.tight_layout()
 
-# Save plot
 os.makedirs("plots", exist_ok=True)
 plt.savefig("plots/multistream_convergence_analysis.png", dpi=300, bbox_inches='tight')
 plt.show()
-plt.show(block=False)
 print(f"\nFinal results:")
 for M, error in zip(M_values, results):
     print(f"M = {M:2d}: L2 error = {error}")
@@ -117,31 +112,3 @@ for M, error in zip(M_values, results):
 
 
 
-
-
-'''
-
-
-plt.scatter(M_values, results_multistream, s=100, color='red', zorder=5, label='Multistream')
-plt.scatter([M_values[0]], [results_2d[0]], s=100, color='blue', zorder=5, label='2D Vlasov (reference)')
-plt.plot(M_values, results_multistream, 'r-', alpha=0.7)
-
-plt.xlabel("M (Number of Streams)")
-plt.ylabel("L2 Norm")
-plt.xticks(M_values)
-plt.title("Multistream vs 2D Vlasov: L2 Norms of Moment Functions")
-plt.legend()
-plt.grid(True, alpha=0.3)
-plt.tight_layout()
-
-# Save plot
-os.makedirs("plots", exist_ok=True)
-plt.savefig("plots/multistream_l2_norms_analysis.png", dpi=300, bbox_inches='tight')
-plt.show()
-plt.show(block=False)
-
-print(f"\nFinal results:")
-print(f"2D Vlasov L2 norm: {results_2d[0]:.6e}")
-for M, ms_norm in zip(M_values, results_multistream):
-    print(f"M = {M:2d}: Multistream L2 norm = {ms_norm:.6e}")
-'''
