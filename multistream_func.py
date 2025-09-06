@@ -3,28 +3,29 @@ import math
 from scipy.special import roots_hermite
 import numpy as np
 import os
-
-def run_multistream(M, output_dir="./"):
+def w(v):
+    return v**2
+def run_multistream(M,output_dir="./"):
     
-    # Create output directory if it doesn't exist
     os.makedirs(output_dir, exist_ok=True)
     print(f"Using M = {M} streams")
     print(f"Output directory: {os.path.abspath(output_dir)}")
     
-    ncells = 40
+    ncells = 50
     L = 8*pi
-    A = Constant(0.05) 
-    k = Constant(0.5) 
+    A = Constant(0.3) 
+    k = Constant(1.0) 
     mesh = PeriodicIntervalMesh(ncells, L,name = "1d_mesh")
     x = SpatialCoordinate(mesh)[0]
     V_dg = FunctionSpace(mesh, "DG", 1)     # for charge density q
     V_cg = FunctionSpace(mesh, "CG", 1)     # for potential phi
-    W_cg = VectorFunctionSpace(mesh, "CG", 1)  # for velocity u
-
-
-    def compute_total_charge(q_list):
-        total_charge_density = sum(q_list)
-        return assemble(total_charge_density * dx)
+    W_cg = VectorFunctionSpace(mesh, "CG", 1)
+    
+    def compute_moment(q_list, u_list):
+        moment = Function(V_dg, name="moment")
+        moment_expr = sum([w(ui[0]) * qi for ui, qi in zip(u_list, q_list)])
+        moment.interpolate(moment_expr)
+        return moment
 
     q_list = [Function(V_dg, name=f"q{i+1}") for i in range(M)]
     u_list = [Function(W_cg, name=f"u{i+1}") for i in range(M)]
@@ -39,9 +40,9 @@ def run_multistream(M, output_dir="./"):
         n_i = adjusted_weights[i] * spatial_part
         u_list[i].interpolate(as_vector([v_i]))
         q_list[i].interpolate(n_i)
-
-    initial_charge = compute_total_charge(q_list)
-    print(f"Initial total charge: {initial_charge}")
+    m = compute_moment(q_list,u_list)
+    print(assemble(m*dx))
+    print(norm((m)))
 
     # Time stepping
     T = 8
@@ -79,7 +80,7 @@ def run_multistream(M, output_dir="./"):
     L2 = replace(L1, {q_temp: q1_temp})
     L3 = replace(L1, {q_temp: q2_temp})
 
-    dq = Function(V_dg)  # increment for q
+    dq = Function(V_dg) 
 
     # Advection solvers
     params = {'ksp_type': 'preonly', 'pc_type': 'bjacobi', 'sub_pc_type': 'ilu'}
@@ -181,15 +182,15 @@ def run_multistream(M, output_dir="./"):
             velocity_solver.solve()
             q_list[i].assign((1.0/3.0)*q_list[i] + (2.0/3.0)*(q2_list[i] + dq))
             u_list[i].assign((1.0/3.0)*u_list[i] + (2.0/3.0)*(u2_list[i] + du))
-
-        step += 1
-        t += dt
-
-        # Output
+    
         if step % output_freq == 0:
             q_total.interpolate(sum(q_list))
             outfile.write(*q_list, phi, *u_list, q_total)
 
+
+        step += 1
+        t += dt
+    
     print(f"Simulation complete! Total steps: {step}")
 
     # Final checkpoint - NOW USING OUTPUT_DIR
@@ -202,6 +203,9 @@ def run_multistream(M, output_dir="./"):
     
         for i, u in enumerate(u_list):
             afile.save_function(u, name=f"u_{i+1}")
+    m = compute_moment(q_list,u_list)
+    print(assemble(m*dx))
+    print(norm(m))
     return None
 
 if __name__ == "__main__":

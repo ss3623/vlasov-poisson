@@ -1,24 +1,26 @@
 from firedrake import *
-
+def w(v):
+    return v**2
 ncells = 50
 L = 8*pi
-base_mesh = PeriodicIntervalMesh(ncells, L)
-
 H = 10.0
-nlayers = 200
+base_mesh = PeriodicIntervalMesh(ncells, L)
+nlayers = 100
 mesh = ExtrudedMesh(base_mesh, layers=nlayers, layer_height=H/nlayers,name = "2d_mesh")
 x, v = SpatialCoordinate(mesh)
 mesh.coordinates.interpolate(as_vector([x, v-H/2]))
+result1 = assemble(Constant(1.0) * dx(mesh))
+print(f"Full domain integral: {result1}")
 
+breakpoint()
 V = FunctionSpace(mesh, 'DQ', 1)
 
 Wbar = FunctionSpace(mesh, 'CG', 1, vfamily='R', vdegree=0)
 
 fn = Function(V, name="density")
-A = Constant(0.05)
-k = Constant(0.5)
+A = Constant(0.3)
+k = Constant(1.0)
 
-# Use directly:
 fn.interpolate(exp(-v**2/2) * (1 + A*cos(k*x)) / sqrt(2*pi))
 
 
@@ -70,7 +72,7 @@ df_L = dtc*(div(u*q)*fstar*dx
 df_problem = LinearVariationalProblem(df_a, df_L, df_out)
 df_solver = LinearVariationalSolver(df_problem)
 
-T = 8.0 #spiral patterns???? #regridding - T = 15- some rolling up of solutions
+T = 8.0 
 t = 0.
 ndump = 100
 dumpn = 0
@@ -89,12 +91,17 @@ phi_solver.solve()
 outfile.write(fn, phi)
 phi.assign(.0)
 
-'''
-with CheckpointFile("vlasov_checkpoint.h5",'w') as afile:
-    afile.save_mesh(mesh,"2d_mesh")
-    afile.save_function(fn,name = "fn")
-    afile.save_function(phi, name = "phi")
-'''
+m_trial = TrialFunction(Wbar)
+r_test = TestFunction(Wbar)
+m_2d = Function(Wbar)
+a_moment = r_test * m_trial * dx
+L_moment = H * r_test * w(v) * fn * dx
+moment_problem = LinearVariationalProblem(a_moment, L_moment, m_2d)
+moment_solver = LinearVariationalSolver(moment_problem)
+moment_solver.solve()
+moment_2d_integrated = assemble(m_2d * dx)/H
+print(moment_2d_integrated)
+print(norm(m_2d))
 
 for step in ProgressBar("Timestep").iter(range(nsteps)):
 
@@ -119,6 +126,19 @@ for step in ProgressBar("Timestep").iter(range(nsteps)):
        dumpn = 0
        outfile.write(fn, phi)
        projected.write(fn,phi)
+
+
+m_trial = TrialFunction(Wbar)
+r_test = TestFunction(Wbar)
+m_2d = Function(Wbar)
+a_moment = r_test * m_trial * dx
+L_moment = H * r_test * w(v) * fn * dx
+moment_problem = LinearVariationalProblem(a_moment, L_moment, m_2d)
+moment_solver = LinearVariationalSolver(moment_problem)
+moment_solver.solve()
+moment_2d_integrated = assemble(m_2d* dx)/H
+print(moment_2d_integrated)
+print(norm(m_2d))
 
 with CheckpointFile("vlasov_final_checkpoint.h5",'w') as afile:
     afile.save_mesh(mesh,"2d_mesh")

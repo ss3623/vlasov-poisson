@@ -9,16 +9,17 @@ import os
 results = []
 def w(u):
     return u**2
-
-H = 1
+H = 10
 
 print("Loading 2D Vlasov data...")
+
 with CheckpointFile("vlasov_final_checkpoint.h5", 'r') as afile:
     mesh_2d = afile.load_mesh("2d_mesh")
     fn = afile.load_function(mesh_2d, "fn")
     phi_2d = afile.load_function(mesh_2d, "phi")
 
 print("Computing 2D Vlasov moment...")
+
 V_2d = FunctionSpace(mesh_2d, 'DQ', 1)
 Wbar_2d = FunctionSpace(mesh_2d, 'CG', 1, vfamily='R', vdegree=0)
 x, v = SpatialCoordinate(mesh_2d)
@@ -30,8 +31,9 @@ L_moment = H * r_test * w(v) * fn * dx
 moment_problem = LinearVariationalProblem(a_moment, L_moment, m_2d)
 moment_solver = LinearVariationalSolver(moment_problem)
 moment_solver.solve()
-moment_value = assemble(m_2d * dx)
-print(f"2D Vlasov moment before transfer: {moment_value}")
+print(f"norm of 2d vlasov moment: {norm(m_2d)}")
+
+
 print("Loading 1D mesh...")
 sample_checkpoint = "results/M_2/multistream_M2_final_checkpoint.h5"
 
@@ -56,14 +58,13 @@ line = Mesh(new_coord)
 V_dg = FunctionSpace(line, 'DG', 1)
 
 print("Transferring 2D moment to line mesh...")
+
 m2d_line = Function(V_dg)
-m2d_line.assign(assemble(interpolate(m_2d*10, V_dg)))
-m2d_total = assemble (m2d_line * dx)
-print(f"2D Vlasov moment after transfer: {m2d_total}")
+m2d_line.assign(assemble(interpolate(m_2d, V_dg)))
+print(f"norm of 2d vlasov moment after transfer: {norm(m2d_line)}")
 
-#breakpoint()
+M_values = [2,3,4,5,6,7,8,9,10,15,20,23,27,30,37,40]
 
-M_values = [2,4,5,6,10,15,20,25,30,35,40]
 results_dir = "results"
 
 for M in M_values:
@@ -89,22 +90,21 @@ for M in M_values:
     m_s = compute_moment(q_list, u_list) 
     ms_line = Function(V_dg)
     ms_line.assign(assemble(interpolate(m_s, V_dg))) 
-    print(f"moment value: {assemble(ms_line*dx)}")   
     error = (ms_line - m2d_line)
-    results.append(norm(error))
+    results.append((norm(error)))
 
 plt.figure(figsize=(10, 6))
-plt.scatter(M_values, results, s=100, color='red', zorder=5)
+plt.scatter(M_values, results, s=50, color='red', zorder=5)
 plt.plot(M_values, results, 'b-', alpha=0.7)
 plt.xlabel("M (Number of Streams)")
 plt.xticks(M_values)
 plt.title("Multistream vs 2D Vlasov: L2 Norm of Error")
 plt.grid(True, alpha=0.3)
 plt.tight_layout()
-
 os.makedirs("plots", exist_ok=True)
 plt.savefig("plots/multistream_convergence_analysis.png", dpi=300, bbox_inches='tight')
 plt.show()
+
 print(f"\nFinal results:")
 for M, error in zip(M_values, results):
     print(f"M = {M:2d}: L2 error = {error}")
