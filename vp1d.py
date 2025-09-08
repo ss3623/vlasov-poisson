@@ -5,21 +5,19 @@ ncells = 50
 L = 8*pi
 H = 10.0
 base_mesh = PeriodicIntervalMesh(ncells, L)
-nlayers = 100
+nlayers = 200
 mesh = ExtrudedMesh(base_mesh, layers=nlayers, layer_height=H/nlayers,name = "2d_mesh")
 x, v = SpatialCoordinate(mesh)
 mesh.coordinates.interpolate(as_vector([x, v-H/2]))
 result1 = assemble(Constant(1.0) * dx(mesh))
 print(f"Full domain integral: {result1}")
-
-breakpoint()
 V = FunctionSpace(mesh, 'DQ', 1)
 
 Wbar = FunctionSpace(mesh, 'CG', 1, vfamily='R', vdegree=0)
 
 fn = Function(V, name="density")
-A = Constant(0.3)
-k = Constant(1.0)
+A = Constant(0.05)
+k = Constant(0.5)
 
 fn.interpolate(exp(-v**2/2) * (1 + A*cos(k*x)) / sqrt(2*pi))
 
@@ -72,11 +70,11 @@ df_L = dtc*(div(u*q)*fstar*dx
 df_problem = LinearVariationalProblem(df_a, df_L, df_out)
 df_solver = LinearVariationalSolver(df_problem)
 
-T = 8.0 
+T = 0.01 
 t = 0.
 ndump = 100
 dumpn = 0
-nsteps = 1000
+nsteps = 10
 dt = T/nsteps
 dtc.assign(dt)
 
@@ -103,6 +101,10 @@ moment_2d_integrated = assemble(m_2d * dx)/H
 print(moment_2d_integrated)
 print(norm(m_2d))
 
+with CheckpointFile("vlasov_initial_checkpoint.h5", 'w') as afile:
+    afile.save_mesh(mesh,"2d_mesh")
+    afile.save_function(fn,name = "fn")
+    afile.save_function(phi,name =  "phi")
 for step in ProgressBar("Timestep").iter(range(nsteps)):
 
    fstar.assign(fn)
