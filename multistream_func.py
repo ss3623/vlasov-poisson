@@ -13,8 +13,8 @@ def run_multistream(M,output_dir="./"):
     
     ncells = 50
     L = 8*pi
-    A = Constant(0.3) 
-    k = Constant(1.0) 
+    A = Constant(0.05) 
+    k = Constant(0.5) 
     mesh = PeriodicIntervalMesh(ncells, L,name = "1d_mesh")
     x = SpatialCoordinate(mesh)[0]
     V_dg = FunctionSpace(mesh, "DG", 1)     # for charge density q
@@ -45,8 +45,8 @@ def run_multistream(M,output_dir="./"):
     print(norm((m)))
 
     # Time stepping
-    T = 8
-    dt = T/500.0
+    T = 0.01
+    dt = T/10
     t = 0.0
 
     # Constants

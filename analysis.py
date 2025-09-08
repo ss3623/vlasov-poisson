@@ -15,7 +15,7 @@ import logging
 logging.basicConfig(level=logging.INFO)
 logger = logging.getLogger(__name__)
 results_dir = "results"
-checkpoint_type = "final"  # Easy to change this line
+checkpoint_type = "initial"  
 
 #Constants
 H = 10
