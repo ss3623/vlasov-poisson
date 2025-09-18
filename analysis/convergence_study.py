@@ -3,8 +3,6 @@ import numpy as np
 import sys
 sys.path.append('..')
 from params import P
-H, A, k = P.H, P.A, P.k
-
 # Import our modules
 from data_loader import load_2d_vlasov_data, load_multistream_data
 from moment_calculator import compute_2d_moment, compute_multistream_moment, compute_exact_moment
@@ -57,7 +55,7 @@ def analyze_fixed_time(M_values, T=0.5):
     errors_final = analyze_convergence(M_values, m_2d_line, moments_final)
     
     # Plot
-    #plot_errors_vs_M(M_values, errors_initial, "Multistream vs Exact", k, T)
+    plot_errors_vs_M(M_values, errors_initial, "Multistream vs Exact", k, T)
     #plot_errors_vs_M(M_values, errors_final, "Multistream vs 2D Vlasov", k, T)
     
     return errors_initial, errors_final
@@ -90,9 +88,9 @@ def analyze_varying_time(M_values, T_values):
     return errors_dict
 
 if __name__ == "__main__":
-    M_values = np.arange(11,15)
-    T_values = np.arange(11,20)
+    M_values = np.arange(2,10)
+    #T_values = np.arange(11,20)
     
-    #analyze_fixed_time(M_values, 10)
+    analyze_fixed_time(M_values, )
     # Time evolution analysis
     analyze_varying_time(M_values, T_values)

@@ -8,12 +8,6 @@ from firedrake import *
 import numpy as np
 import os
 
-print("Current directory:", os.getcwd())
-print("Parent directory contents:", os.listdir(".."))
-#breakpoint()
-
-
-
 
 
 def load_multistream_data(M, T, checkpoint_type="final"):

@@ -10,10 +10,10 @@ def plot_errors_vs_M(M_values, errors, title, k, T, output_dir="plots"):
     
     plt.figure(figsize=(10, 6))
     plt.plot(M_values, errors, 'o-', markersize=8, linewidth=2)  # dots with lines
-    plt.yscale('log')
+    #plt.yscale('log')
     plt.xlabel("M (Number of Streams)")
     plt.ylabel("Relative L2 Error")
-    plt.title(f"{title} (T = {T}, k = {k})")
+    plt.title(f"{title} moment (T = {T}, k = {k})")
     plt.grid(True, alpha=0.3)
     plt.show()
 
@@ -36,7 +36,7 @@ def plot_errors_vs_T(T_values, errors_dict, M_values, k):
             label=f'M = {M}'
         )
 
-    plt.yscale('log')
+    #plt.yscale('log')
     plt.xlabel("Time T")
     plt.ylabel("Relative L2 Error")
     plt.title(f"Error vs Time (k = {k})")
